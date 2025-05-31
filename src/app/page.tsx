@@ -283,7 +283,7 @@ export default function Home() {
       <footer className="bg-gray-900 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-gray-400">
-            © 2024 文章转播客. 由AI技术驱动.
+            © 2025 文章转播客. 由扣子驱动.
           </p>
         </div>
       </footer>
