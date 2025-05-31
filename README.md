@@ -32,6 +32,20 @@
 pnpm install
 ```
 
+### 环境变量配置
+
+在项目根目录创建 `.env.local` 文件，并添加以下环境变量：
+
+```bash
+# Coze API 配置
+COZE_API_TOKEN=your_coze_api_token_here
+COZE_WORKFLOW_ID=your_workflow_id_here
+```
+
+**获取配置信息：**
+1. `COZE_API_TOKEN`: 在 [Coze平台](https://www.coze.cn/) 获取API Token
+2. `COZE_WORKFLOW_ID`: 创建工作流后获取的工作流ID
+
 ### 启动开发服务器
 
 ```bash
@@ -56,11 +70,14 @@ pnpm start
 
 ### API配置
 
-项目使用Coze API进行文章转播客转换。API配置位于 `src/app/api/convert/route.ts`。
+项目使用Coze API进行文章转播客转换。API配置通过环境变量管理：
 
-如需修改API配置，请更新以下参数：
-- `Authorization`: API Token
-- `workflow_id`: 工作流ID
+- `COZE_API_TOKEN`: Coze API的访问令牌
+- `COZE_WORKFLOW_ID`: 文章转播客的工作流ID
+
+**安全提示：**
+- 请勿将 `.env.local` 文件提交到版本控制系统
+- 生产环境请使用安全的环境变量管理方案
 
 ## 📁 项目结构
 
@@ -77,6 +94,7 @@ article_to_podcast/
 │   └── lib/
 │       └── utils.ts                # 工具函数
 ├── public/                         # 静态资源
+├── .env.local                      # 环境变量（需要创建）
 ├── components.json                 # shadcn/ui配置
 ├── tailwind.config.ts              # Tailwind配置
 └── package.json                    # 项目配置
@@ -120,6 +138,30 @@ article_to_podcast/
   "token": 消耗的token数量
 }
 ```
+
+### 环境变量
+
+| 变量名 | 描述 | 必需 |
+|--------|------|------|
+| `COZE_API_TOKEN` | Coze API访问令牌 | ✅ |
+| `COZE_WORKFLOW_ID` | 工作流ID | ✅ |
+
+## 🚀 部署
+
+### Vercel部署
+
+1. 将代码推送到GitHub
+2. 在Vercel中导入项目
+3. 在Vercel项目设置中添加环境变量：
+   - `COZE_API_TOKEN`
+   - `COZE_WORKFLOW_ID`
+4. 部署完成
+
+### 其他平台
+
+确保在部署平台的环境变量中设置：
+- `COZE_API_TOKEN`
+- `COZE_WORKFLOW_ID`
 
 ## 🤝 贡献
 

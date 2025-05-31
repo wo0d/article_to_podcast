@@ -11,18 +11,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 从环境变量读取API配置
+    const apiToken = process.env.COZE_API_TOKEN;
+    const workflowId = process.env.COZE_WORKFLOW_ID;
+
+    if (!apiToken || !workflowId) {
+      console.error('缺少必要的环境变量: COZE_API_TOKEN 或 COZE_WORKFLOW_ID');
+      return NextResponse.json(
+        { error: '服务配置错误，请联系管理员' },
+        { status: 500 }
+      );
+    }
+
     // 调用Coze API
     const response = await fetch('https://api.coze.cn/v1/workflow/run', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer pat_zaJrXiwCgskgJIx3E9J9CMeynb8IwAAaMu8HrCFOB2JwZkdqdCsrYruhbrclyYdS',
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         parameters: {
           article_url: articleUrl,
         },
-        workflow_id: '7510132534971285530',
+        workflow_id: workflowId,
       }),
     });
 
