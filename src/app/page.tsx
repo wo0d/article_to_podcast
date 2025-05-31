@@ -78,7 +78,7 @@ export default function Home() {
           setIsLoading(false);
           setCurrentTaskId(null);
         }
-      }, 3000); // 每3秒查询一次
+      }, 5000); // 每5秒查询一次
     }
 
     return () => {
