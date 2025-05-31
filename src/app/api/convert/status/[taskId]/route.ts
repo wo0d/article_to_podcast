@@ -68,7 +68,7 @@ export async function GET(
       // 失败的任务也可以删除
       // await taskStorage.delete(taskId);
     } else if (task.status === 'processing') {
-      response.message = '任务正在处理中，请稍后再试...';
+      response.message = '任务正在处理中...';
     }
 
     return NextResponse.json(response);
