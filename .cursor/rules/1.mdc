@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+### 技术栈
+* next.js
+* typescript
+* shadcn ui
+
+### 包管理工具
+* pnpm
+
+### mcp
+* 使用context 7 mcp来查询各种库、组件等等的最新用法
+
+### 各种库、组件的版本
+* 使用最新稳定版
