@@ -10,8 +10,6 @@ import { Download, Play, Pause, Volume2, Loader2, CheckCircle, XCircle } from 'l
 interface ConversionResult {
   audio: string;
   cover_url: string;
-  debug_url: string;
-  token: number;
 }
 
 interface TaskResponse {
@@ -60,8 +58,6 @@ export default function Home() {
             setResult({
               audio: data.result.audio,
               cover_url: data.result.cover_url,
-              debug_url: data.result.debug_url,
-              token: data.result.token,
             });
             setIsLoading(false);
             setCurrentTaskId(null);
@@ -330,7 +326,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="flex justify-center space-x-4">
+                      <div className="flex justify-center">
                         <Button
                           onClick={() => handleDownload(result.audio, 'podcast-audio.mp3')}
                           variant="outline"
@@ -339,22 +335,7 @@ export default function Home() {
                           <Download className="h-4 w-4" />
                           <span>下载音频</span>
                         </Button>
-                        {result.debug_url && (
-                          <Button
-                            onClick={() => window.open(result.debug_url, '_blank')}
-                            variant="outline"
-                            className="flex items-center space-x-2"
-                          >
-                            <span>查看详情</span>
-                          </Button>
-                        )}
                       </div>
-
-                      {result.token && (
-                        <p className="text-xs text-gray-500 text-center">
-                          消耗Token: {result.token}
-                        </p>
-                      )}
                     </div>
                   </div>
                 )}
