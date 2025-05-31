@@ -1,17 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Download, Play, Pause, Volume2, Loader2 } from 'lucide-react';
+import { Download, Play, Pause, Volume2, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 interface ConversionResult {
   audio: string;
   cover_url: string;
   debug_url: string;
   token: number;
+}
+
+interface TaskResponse {
+  taskId: string;
+  status: 'processing' | 'completed' | 'failed';
+  statusUrl: string;
+  message?: string;
+  result?: {
+    success: boolean;
+    audio: string;
+    cover_url: string;
+    debug_url: string;
+    token: number;
+  };
+  error?: string;
 }
 
 export default function Home() {
@@ -21,6 +36,61 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('');
+
+  // 轮询查询任务状态
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
+    if (currentTaskId && isLoading) {
+      intervalId = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/convert/status/${currentTaskId}`);
+          const data: TaskResponse = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || '查询状态失败');
+          }
+
+          setStatusMessage(data.message || '');
+
+          if (data.status === 'completed' && data.result) {
+            setResult({
+              audio: data.result.audio,
+              cover_url: data.result.cover_url,
+              debug_url: data.result.debug_url,
+              token: data.result.token,
+            });
+            setIsLoading(false);
+            setCurrentTaskId(null);
+            setProgress(100);
+            setStatusMessage('转换完成！');
+          } else if (data.status === 'failed') {
+            setError(data.error || '转换失败');
+            setIsLoading(false);
+            setCurrentTaskId(null);
+            setProgress(0);
+          } else if (data.status === 'processing') {
+            // 模拟进度增长
+            setProgress(prev => Math.min(prev + Math.random() * 10, 90));
+          }
+        } catch (err) {
+          console.error('查询状态失败:', err);
+          setError(err instanceof Error ? err.message : '查询状态失败');
+          setIsLoading(false);
+          setCurrentTaskId(null);
+        }
+      }, 3000); // 每3秒查询一次
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [currentTaskId, isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +102,8 @@ export default function Home() {
     setIsLoading(true);
     setError('');
     setResult(null);
+    setProgress(10);
+    setStatusMessage('正在提交任务...');
 
     try {
       const response = await fetch('/api/convert', {
@@ -42,17 +114,19 @@ export default function Home() {
         body: JSON.stringify({ articleUrl }),
       });
 
-      const data = await response.json();
+      const data: TaskResponse = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || '转换失败');
+        throw new Error(data.error || '提交任务失败');
       }
 
-      setResult(data);
+      setCurrentTaskId(data.taskId);
+      setProgress(20);
+      setStatusMessage(data.message || '任务已提交，正在处理中...');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '转换失败，请稍后重试');
-    } finally {
+      setError(err instanceof Error ? err.message : '提交任务失败，请稍后重试');
       setIsLoading(false);
+      setProgress(0);
     }
   };
 
@@ -84,6 +158,21 @@ export default function Home() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const resetForm = () => {
+    setArticleUrl('');
+    setIsLoading(false);
+    setResult(null);
+    setError('');
+    setCurrentTaskId(null);
+    setProgress(0);
+    setStatusMessage('');
+    if (audioElement) {
+      audioElement.pause();
+      setAudioElement(null);
+    }
+    setIsPlaying(false);
   };
 
   return (
@@ -145,18 +234,41 @@ export default function Home() {
 
                 {/* Loading Progress */}
                 {isLoading && (
-                  <div className="space-y-3">
-                    <Progress value={33} className="h-2" />
-                    <p className="text-sm text-gray-600 text-center">
-                      AI正在分析文章内容并生成播客，请耐心等待...
-                    </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">转换进度</span>
+                      <span className="text-sm text-gray-500">{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-3" />
+                    <div className="flex items-center justify-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      <p className="text-sm text-gray-600 text-center">
+                        {statusMessage || 'AI正在分析文章内容并生成播客，请耐心等待...'}
+                      </p>
+                    </div>
+                    {currentTaskId && (
+                      <p className="text-xs text-gray-500 text-center">
+                        任务ID: {currentTaskId}
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {/* Error Message */}
                 {error && (
                   <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-600 text-sm">{error}</p>
+                    <div className="flex items-center space-x-2">
+                      <XCircle className="h-5 w-5 text-red-500" />
+                      <p className="text-red-600 text-sm">{error}</p>
+                    </div>
+                    <Button
+                      onClick={resetForm}
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                    >
+                      重新开始
+                    </Button>
                   </div>
                 )}
 
@@ -164,9 +276,19 @@ export default function Home() {
                 {result && (
                   <div className="space-y-6 pt-6 border-t border-gray-200">
                     <div className="text-center">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        转换完成！
-                      </h3>
+                      <div className="flex items-center justify-center space-x-2 mb-4">
+                        <CheckCircle className="h-6 w-6 text-green-500" />
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          转换完成！
+                        </h3>
+                      </div>
+                      <Button
+                        onClick={resetForm}
+                        variant="outline"
+                        size="sm"
+                      >
+                        转换新文章
+                      </Button>
                     </div>
 
                     {/* Cover Image */}
@@ -208,7 +330,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="flex justify-center">
+                      <div className="flex justify-center space-x-4">
                         <Button
                           onClick={() => handleDownload(result.audio, 'podcast-audio.mp3')}
                           variant="outline"
@@ -217,7 +339,22 @@ export default function Home() {
                           <Download className="h-4 w-4" />
                           <span>下载音频</span>
                         </Button>
+                        {result.debug_url && (
+                          <Button
+                            onClick={() => window.open(result.debug_url, '_blank')}
+                            variant="outline"
+                            className="flex items-center space-x-2"
+                          >
+                            <span>查看详情</span>
+                          </Button>
+                        )}
                       </div>
+
+                      {result.token && (
+                        <p className="text-xs text-gray-500 text-center">
+                          消耗Token: {result.token}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}

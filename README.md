@@ -9,6 +9,9 @@
 - **实时播放**: 支持在线播放生成的播客音频
 - **一键下载**: 支持音频文件和封面图下载
 - **响应式设计**: 完美适配各种设备屏幕
+- **自动封面**: 根据文章内容自动生成精美的播客封面图
+- **异步处理**: 支持长时间任务的异步处理，实时显示转换进度
+- **持久化存储**: 使用 Supabase 数据库存储任务状态
 
 ## 🛠️ 技术栈
 
@@ -18,6 +21,7 @@
 - **样式框架**: Tailwind CSS
 - **包管理器**: pnpm
 - **图标库**: Lucide React
+- **数据库**: Supabase (PostgreSQL)
 
 ## 📦 安装和运行
 
@@ -40,11 +44,22 @@ pnpm install
 # Coze API 配置
 COZE_API_TOKEN=your_coze_api_token_here
 COZE_WORKFLOW_ID=your_workflow_id_here
+
+# Supabase 配置
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# 应用配置 (可选)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 **获取配置信息：**
 1. `COZE_API_TOKEN`: 在 [Coze平台](https://www.coze.cn/) 获取API Token
 2. `COZE_WORKFLOW_ID`: 创建工作流后获取的工作流ID
+3. `NEXT_PUBLIC_SUPABASE_URL`: 项目设置 → API → Project URL
+4. `NEXT_PUBLIC_SUPABASE_ANON_KEY`: 项目设置 → API → anon public key
+5. `SUPABASE_SERVICE_ROLE_KEY`: 项目设置 → API → service_role secret key
 
 ### 启动开发服务器
 
@@ -85,7 +100,12 @@ pnpm start
 article_to_podcast/
 ├── src/
 │   ├── app/
-│   │   ├── api/convert/route.ts    # API路由
+│   │   ├── api/
+│   │   │   ├── convert/
+│   │   │   │   └── route.ts    # API路由
+│   │   │   └── status/
+│   │   │       └── [taskId]/
+│   │   │           └── route.ts   # 状态查询端点
 │   │   ├── globals.css             # 全局样式
 │   │   ├── layout.tsx              # 根布局
 │   │   └── page.tsx                # 主页面
@@ -131,11 +151,49 @@ article_to_podcast/
 响应：
 ```json
 {
-  "success": true,
-  "audio": "音频文件URL",
-  "cover_url": "封面图URL",
-  "debug_url": "调试URL",
-  "token": 消耗的token数量
+  "taskId": "task_abc123",
+  "status": "processing",
+  "message": "任务已接受，正在处理中...",
+  "statusUrl": "/api/convert/status/task_abc123"
+}
+```
+
+### 查询状态接口
+
+**GET** `/api/convert/status/[taskId]`
+
+响应：
+- 处理中：
+```json
+{
+  "taskId": "task_abc123",
+  "status": "processing",
+  "message": "任务正在处理中，请稍后再试...",
+  "createdAt": 1640995200000
+}
+```
+- 完成：
+```json
+{
+  "taskId": "task_abc123",
+  "status": "completed",
+  "result": {
+    "success": true,
+    "audio": "https://example.com/audio.mp3",
+    "cover_url": "https://example.com/cover.png",
+    "debug_url": "https://example.com/debug",
+    "token": 1500
+  },
+  "createdAt": 1640995200000
+}
+```
+- 失败：
+```json
+{
+  "taskId": "task_abc123",
+  "status": "failed",
+  "error": "转换失败的具体原因",
+  "createdAt": 1640995200000
 }
 ```
 
@@ -145,8 +203,11 @@ article_to_podcast/
 |--------|------|------|
 | `COZE_API_TOKEN` | Coze API访问令牌 | ✅ |
 | `COZE_WORKFLOW_ID` | 工作流ID | ✅ |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL | ✅ |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名密钥 | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务角色密钥 | ✅ |
 
-## 🚀 部署
+## 🎯 部署
 
 ### Vercel部署
 
@@ -155,6 +216,9 @@ article_to_podcast/
 3. 在Vercel项目设置中添加环境变量：
    - `COZE_API_TOKEN`
    - `COZE_WORKFLOW_ID`
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
 4. 部署完成
 
 ### 其他平台
@@ -162,6 +226,9 @@ article_to_podcast/
 确保在部署平台的环境变量中设置：
 - `COZE_API_TOKEN`
 - `COZE_WORKFLOW_ID`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 ## 🤝 贡献
 
@@ -178,3 +245,54 @@ MIT License
 - [Tailwind CSS](https://tailwindcss.com/) - CSS框架
 - [Lucide](https://lucide.dev/) - 图标库
 - [Coze API](https://www.coze.cn/) - AI转换服务
+
+## 开发说明
+
+### 任务存储
+
+使用 Supabase PostgreSQL 数据库存储任务状态，提供：
+
+- **持久化存储**: 任务状态在服务器重启后仍然保持
+- **高可用性**: Supabase 提供的托管数据库服务
+- **实时查询**: 支持高并发的任务状态查询
+- **自动清理**: 定期清理过期任务（24小时）
+
+### Edge Functions
+
+API 路由配置为 Edge Functions，提供更好的性能和全球分布。
+
+### 错误处理
+
+- 数据库连接错误处理
+- 任务状态查询异常处理
+- 自动重试机制
+- 详细的错误信息
+- 任务超时处理 (24小时)
+
+### 数据库维护
+
+#### 手动清理过期任务
+
+```sql
+-- 清理24小时前的任务
+DELETE FROM public.tasks 
+WHERE created_at < NOW() - INTERVAL '24 hours';
+```
+
+#### 查看任务统计
+
+```sql
+-- 查看各状态任务数量
+SELECT status, COUNT(*) as count 
+FROM public.tasks 
+GROUP BY status;
+```
+
+#### 启用自动清理 (可选)
+
+如果您的 Supabase 项目支持 pg_cron 扩展：
+
+```sql
+-- 每6小时清理一次过期任务
+SELECT cron.schedule('cleanup-expired-tasks', '0 */6 * * *', 'SELECT public.cleanup_expired_tasks();');
+```
